@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"log"
+	"regexp/syntax"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +41,21 @@ func verifyHeaders(headers []string) error {
 		}
 	}
 	return nil
+}
+
+func validateTrainID(trainID string) (string, error) {
+	const trainIDLength = 4
+	if len(trainID) != trainIDLength {
+		return "", fmt.Errorf("Train Id is invalid, too few characters: %s", trainID)
+	}
+
+	for _, r := range trainID {
+		if !syntax.IsWordChar(r) {
+			return "", fmt.Errorf("Train Id must be alphanumeric: %s", trainID)
+		}
+	}
+
+	return trainID, nil
 }
 
 func validateAndParseTime(scheduledTime string) (string, error) {
@@ -108,9 +123,9 @@ func readCsv(givenCsv string) (schedules []Schedule, err error) {
 			return nil, err
 		}
 
-		trainID := record[2] // TODO Test for regex alphanumeric
-		if len(trainID) < 4 {
-			return nil, errors.New(fmt.Sprintf("Train Id is invalid, too few characters: %s", trainID))
+		trainID, err := validateTrainID(record[2])
+		if err != nil {
+			return nil, err
 		}
 
 		// use go pkg time to validate and parse to expected string
@@ -122,7 +137,7 @@ func readCsv(givenCsv string) (schedules []Schedule, err error) {
 		schedule := Schedule{
 			StopID:  stopID,
 			Route:   record[1], // TODO: verify with route in db
-			TrainID: trainID[:4],
+			TrainID: trainID,
 			Time:    trainTime,
 		}
 
@@ -168,12 +183,12 @@ func getScheduleByStop(stopID int64, selectedTime string) (nextTrains []Schedule
 		}
 
 		// is the train arriving within five minutes?
-		trainWithinRange, err := trainIsWithinTimeRange(selectedTime, scheduleData.Time)
+		trainWithinSchedule, err := isTrainWithinSchedule(selectedTime, scheduleData.Time)
 		if err != nil {
 			return nextTrains, err
 		}
 
-		if trainWithinRange {
+		if trainWithinSchedule {
 			nextTrains = append(nextTrains, scheduleData)
 		}
 
@@ -208,19 +223,17 @@ func getScheduleByStop(stopID int64, selectedTime string) (nextTrains []Schedule
 	return nextTrains, nil
 }
 
-func trainIsWithinTimeRange(requestedTime, scheduleTime string) (bool, error) {
+func isTrainWithinSchedule(requestedTime, scheduleTime string) (bool, error) {
 	// TODO: allow different dateTime formats
 	requested, err := time.Parse(layout, requestedTime)
 	if err != nil {
 		return false, err
 	}
-	requestedRange := requested.Add(time.Minute * 5)
 
 	scheduled, err := time.Parse(layout, scheduleTime)
 	if err != nil {
 		return false, err
 	}
 
-	withinRange := requested.Equal(scheduled) || scheduled.After(requested) && scheduled.Before(requestedRange)
-	return withinRange, nil
+	return requested.Equal(scheduled), nil
 }

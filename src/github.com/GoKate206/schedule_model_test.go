@@ -10,7 +10,6 @@ import (
 )
 
 func TestReadCsv(t *testing.T) {
-	t.Skip()
 	csvHeaders := "stopID,route,trainID,time"
 	invokeRead := func(csv string) []Schedule {
 		schedules, err := readCsv(csv)
@@ -67,6 +66,14 @@ func TestReadCsv(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.EqualValues(t, err.Error(), "Train Id is invalid, too few characters: 865")
 		})
+
+		t.Run("when trainID is not alphanumeric", func(t *testing.T) {
+			csv := `stopID,route,trainID,time
+1,"C","a_b@","Jul 05 2021 13:14"`
+			_, err := readCsv(csv)
+			assert.NotNil(t, err)
+			assert.EqualValues(t, err.Error(), "Train Id must be alphanumeric: a_b@")
+		})
 	})
 
 	t.Run("when readCsv is invoked with a valid csv", func(t *testing.T) {
@@ -83,7 +90,6 @@ func TestReadCsv(t *testing.T) {
 }
 
 func TestInsertSchedules(t *testing.T) {
-	t.Skip()
 	initDb()
 	defer tearDownDb()
 
@@ -134,7 +140,7 @@ func TestGetScheduleByStop(t *testing.T) {
 		stopId := int64(1)
 		csv := `stopID,route,trainID,time
 1,"C","865a","Jul 04 2021 07:14"
-1,"C","865a","Jul 04 2021 07:46"
+1,"C","865a","Jul 04 2021 07:42"
 1,"C","865a","Jul 04 2021 08:10"
 1,"C","865a","Jul 04 2021 08:34"
 1,"C","865a","Jul 04 2021 09:04"
@@ -147,7 +153,7 @@ func TestGetScheduleByStop(t *testing.T) {
 1,"C","kpr5","Jul 04 2021 11:55"
 1,"C","kpr5","Jul 04 2021 12:02"
 1,"C","kpr5","Jul 04 2021 12:18"
-1,"55","465a","Jul 04 2021 07:45"
+1,"55","465a","Jul 04 2021 07:42"
 1,"55","465a","Jul 04 2021 12:30"
 1,"55","465a","Jul 04 2021 12:50"
 1,"55","465a","Jul 04 2021 13:12"
@@ -171,7 +177,7 @@ func TestGetScheduleByStop(t *testing.T) {
 				assert.EqualValues(t, err.Error(), `parsing time "07/04/21 7:42" as "Jan 02 2006 15:04": cannot parse "07/04/21 7:42" as "Jan"`)
 			})
 
-			t.Run("when invoked with a valid time within schedule range", func(t *testing.T) {
+			t.Run("when invoked with a valid time where ther are 2 trains arriving on that minute", func(t *testing.T) {
 				schedules, err := getScheduleByStop(stopId, "Jul 04 2021 07:42")
 				require.Nil(t, err)
 
@@ -183,11 +189,11 @@ func TestGetScheduleByStop(t *testing.T) {
 						second = schedules[1]
 					)
 
-					assert.EqualValues(t, "55", first.Route)
-					assert.EqualValues(t, "Jul 04 2021 07:45", first.Time)
+					assert.EqualValues(t, "C", first.Route)
+					assert.EqualValues(t, "Jul 04 2021 07:42", first.Time)
 
-					assert.EqualValues(t, "C", second.Route)
-					assert.EqualValues(t, "Jul 04 2021 07:46", second.Time)
+					assert.EqualValues(t, "55", second.Route)
+					assert.EqualValues(t, "Jul 04 2021 07:42", second.Time)
 				})
 			})
 

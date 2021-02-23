@@ -15,8 +15,9 @@ Train Schedule Program
   < Coming soon! >
 
 ### Assumptions
-- Customers will see trains within 5 minutes of the time they submitted
+- < Coming soon >
 
 
 ### Technology Used
 - [Scribble](https://pkg.go.dev/github.com/nanobox-io/golang-scribble): Mock a database with JSON
+- [Testify](https://pkg.go.dev/github.com/stretchr/testify): Provide tools to test code

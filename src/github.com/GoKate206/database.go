@@ -30,6 +30,13 @@ func initDb() {
 	}
 }
 
+func bytesToSchedule(bytes []byte) (Schedule, error) {
+	schedule := Schedule{}
+	err := json.Unmarshal(bytes, &schedule)
+
+	return schedule, err
+}
+
 func getScheduleByDate(givenDate time.Time) ([]Schedule, error) {
 	schedules := []Schedule{}
 	day := givenDate.Format(dateLayout)
@@ -40,8 +47,7 @@ func getScheduleByDate(givenDate time.Time) ([]Schedule, error) {
 	}
 
 	for _, b := range bytes {
-		schedule := Schedule{}
-		err := json.Unmarshal(b, &schedule)
+		schedule, err := bytesToSchedule(b)
 		if err != nil {
 			return schedules, err
 		}
@@ -61,4 +67,26 @@ func getScheduleByDate(givenDate time.Time) ([]Schedule, error) {
 	})
 
 	return schedules, nil
+}
+
+func getAllStops() ([]int64, error) {
+	trainStops := []int64{}
+	bytes, err := db.ReadAll(scheduleDbName)
+	if err != nil {
+		return trainStops, err
+	}
+
+	uniqueStops := map[int64]bool{}
+	for _, b := range bytes {
+		schedule, err := bytesToSchedule(b)
+		if err != nil {
+			return trainStops, err
+		}
+
+		if !uniqueStops[schedule.StopID] {
+			trainStops = append(trainStops, schedule.StopID)
+		}
+	}
+
+	return trainStops, nil
 }
