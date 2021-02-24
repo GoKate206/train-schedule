@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -133,7 +134,7 @@ func TestInsertSchedules(t *testing.T) {
 	})
 }
 
-func TestGetScheduleByStop(t *testing.T) {
+func TestGetTrainsByStopAndTime(t *testing.T) {
 	initDb()
 	defer tearDownDb()
 
@@ -167,19 +168,19 @@ func TestGetScheduleByStop(t *testing.T) {
 1,"55","465a","Jul 04 2021 22:50"
 1,"55","465a","Jul 04 2021 23:35"
 1,"55","465a","Jul 05 2021 02:30"
-1,"C","314p","Jul 05 2021 03:30"
+1,"C","314p","Jul 05 2021 02:30"
 `
 		csvHandler(csv)
 
-		t.Run("given getScheduleByStop is invoked", func(t *testing.T) {
+		t.Run("given getTrainsByStopAndTime is invoked", func(t *testing.T) {
 			t.Run("when invoked with an invalid time", func(t *testing.T) {
-				_, err := getScheduleByStop(1, "07/04/21 7:42")
+				_, err := getTrainsByStopAndTime(1, "07/04/21 7:42")
 				assert.Error(t, err)
 				assert.EqualValues(t, err.Error(), `parsing time "07/04/21 7:42" as "Jan 02 2006 15:04": cannot parse "07/04/21 7:42" as "Jan"`)
 			})
 
 			t.Run("when invoked with a valid time where there are 2 trains arriving on that minute", func(t *testing.T) {
-				schedules, err := getScheduleByStop(stopId, "Jul 04 2021 07:42")
+				schedules, err := getTrainsByStopAndTime(stopId, "Jul 04 2021 07:42")
 				require.Nil(t, err)
 
 				t.Run("it will return 2 rows", func(t *testing.T) {
@@ -199,7 +200,7 @@ func TestGetScheduleByStop(t *testing.T) {
 			})
 
 			t.Run("when invoked with a valid time outside of schedule range", func(t *testing.T) {
-				schedules, err := getScheduleByStop(stopId, "Jul 04 2021 06:30")
+				schedules, err := getTrainsByStopAndTime(stopId, "Jul 04 2021 06:30")
 				require.Nil(t, err)
 
 				t.Run("it will return 0 rows", func(t *testing.T) {
@@ -208,10 +209,65 @@ func TestGetScheduleByStop(t *testing.T) {
 			})
 
 			t.Run("when invoked where there are no available trains that day", func(t *testing.T) {
-				schedules, _ := getScheduleByStop(stopId, "Jul 04 2021 23:36")
+				schedules, _ := getTrainsByStopAndTime(stopId, "Jul 04 2021 23:36")
 				assert.Len(t, schedules, 2)
 			})
 		})
 
 	})
+}
+
+func TestGetFirstMultipleTrainsByDate(t *testing.T) {
+	t.Run("given a database with two applicable trains", func(t *testing.T) {
+		initDb()
+		defer tearDownDb()
+
+		csv := `stopID,route,trainID,time
+1,"55","465a","Jul 05 2021 01:30"
+1,"C","314p","Jul 05 2021 02:30"
+2,"21","159t","Jul 05 2021 02:30"
+1,"21x","159t","Jul 05 2021 02:30"`
+		csvHandler(csv)
+
+		t.Run("when getFirstTrainsOfDay is invoked", func(t *testing.T) {
+			stopID := int64(1)
+			d, _ := time.Parse(layout, "Jul 05 2021 12:00")
+			trains, err := getFirstTrainsOfDay(d, stopID)
+			require.Nil(t, err)
+
+			t.Run("it will return all trains for the given stop", func(t *testing.T) {
+				assert.Len(t, trains, 2)
+
+				for i := range trains {
+					assert.EqualValues(t, trains[i].StopID, stopID)
+				}
+			})
+		})
+
+	})
+
+	t.Run("given a database with no applicable trains", func(t *testing.T) {
+		initDb()
+		defer tearDownDb()
+
+		csv := `stopID,route,trainID,time
+1,"55","465a","Jul 05 2021 01:30"
+2,"C","314p","Jul 05 2021 02:30"
+3,"21","159t","Jul 05 2021 02:30"
+1,"55","159t","Jul 05 2021 02:30"`
+		csvHandler(csv)
+
+		t.Run("when getFirstTrainsOfDay is invoked", func(t *testing.T) {
+			stopID := int64(1)
+			d, _ := time.Parse(layout, "Jul 05 2021 12:00")
+			trains, err := getFirstTrainsOfDay(d, stopID)
+			require.Nil(t, err)
+
+			t.Run("there will be no trains returned", func(t *testing.T) {
+				assert.Len(t, trains, 0)
+			})
+		})
+
+	})
+
 }

@@ -27,7 +27,7 @@ type Schedule struct {
 //*====================*
 //    Verifications
 //*====================*
-func verifyHeaders(headers []string) error {
+func validateHeader(headers []string) error {
 	// if the headers are not the expected length, raise an error
 	if len(headers) != len(expectedHeaders) {
 		return fmt.Errorf("Expected %d headers, got %d", len(expectedHeaders), len(headers))
@@ -73,6 +73,21 @@ func validateAndParseTime(scheduledTime string) (string, error) {
 	return scheduledTime, nil
 }
 
+func isTrainWithinSchedule(requestedTime, scheduleTime string) (bool, error) {
+	// TODO: allow different dateTime formats
+	requested, err := time.Parse(layout, requestedTime)
+	if err != nil {
+		return false, err
+	}
+
+	scheduled, err := time.Parse(layout, scheduleTime)
+	if err != nil {
+		return false, err
+	}
+
+	return requested.Equal(scheduled), nil
+}
+
 //*========================*
 //    CSV Read & DB Write
 //*========================*
@@ -93,9 +108,10 @@ func csvHandler(schedule string) {
 	}
 }
 
-func readCsv(givenCsv string) (schedules []Schedule, err error) {
+func readCsv(givenCsv string) ([]Schedule, error) {
+	schedules := []Schedule{}
 	if givenCsv == "" {
-		return schedules, err
+		return schedules, nil
 	}
 
 	r := csv.NewReader(strings.NewReader(givenCsv))
@@ -106,7 +122,7 @@ func readCsv(givenCsv string) (schedules []Schedule, err error) {
 	}
 
 	// Verify header matches expected
-	err = verifyHeaders(records[0])
+	err = validateHeader(records[0])
 	if err != nil {
 		return schedules, err
 	}
@@ -146,11 +162,11 @@ func readCsv(givenCsv string) (schedules []Schedule, err error) {
 	return schedules, err
 }
 
-func insertSchedules(schedules []Schedule) (err error) {
+func insertSchedules(schedules []Schedule) error {
 	for i, schedule := range schedules {
 		id := fmt.Sprintf("%d_%s", i, schedule.TrainID)
 		schedule.ID = id
-		if err = db.Write(scheduleDbName, id, &schedule); err != nil {
+		if err := db.Write(scheduleDbName, id, &schedule); err != nil {
 			return err
 		}
 	}
@@ -161,7 +177,8 @@ func insertSchedules(schedules []Schedule) (err error) {
 //*========================*
 //    Get Schedule
 //*========================*
-func getScheduleByStop(stopID int64, selectedTime string) (nextTrains []Schedule, err error) {
+func getTrainsByStopAndTime(stopID int64, selectedTime string) ([]Schedule, error) {
+	nextTrains := []Schedule{}
 	// Parse given date to time.Time
 	selectedDate, err := time.Parse(layout, selectedTime)
 	if err != nil {
@@ -205,7 +222,7 @@ func getScheduleByStop(stopID int64, selectedTime string) (nextTrains []Schedule
 		lastTrain, _ := time.Parse(layout, lastOfToday.Time)
 		showTomorrowTrains = selectedDate.After(lastTrain)
 
-		nextDaySchedule, err = getScheduleByDate(selectedDate.Add(time.Hour * 24))
+		nextDaySchedule, err = getFirstTrainsOfDay(selectedDate.Add(time.Hour*24), stopID)
 		if err != nil {
 			return nextTrains, err
 		}
@@ -222,17 +239,49 @@ func getScheduleByStop(stopID int64, selectedTime string) (nextTrains []Schedule
 	return nextTrains, nil
 }
 
-func isTrainWithinSchedule(requestedTime, scheduleTime string) (bool, error) {
-	// TODO: allow different dateTime formats
-	requested, err := time.Parse(layout, requestedTime)
+func getFirstTrainsOfDay(date time.Time, stopID int64) ([]Schedule, error) {
+	availableTrains := []Schedule{}
+	// trains will be scheduled by time and stopIds
+	trains, err := getScheduleByDate(date)
 	if err != nil {
-		return false, err
+		return availableTrains, err
 	}
 
-	scheduled, err := time.Parse(layout, scheduleTime)
-	if err != nil {
-		return false, err
+	// iterate through all trains looking for the first 2 plus trains
+	// that arrive at the same stop at the same time
+	index := 0
+	max := len(trains)
+	// avoid adding the same train multiple times have boolean determine if
+	// current train should be included in availabile Trains
+	includeCurrent := false
+	for index != max {
+
+		// check that comparisons are within the bounds of trains schedules
+		if (index + 1) >= max {
+			if includeCurrent {
+				availableTrains = append(availableTrains, trains[index])
+			}
+			break
+		}
+
+		c := trains[index]
+		n := trains[index+1]
+		// Parse to pkg time for easy comparisons
+		currentTime, _ := time.Parse(layout, c.Time)
+		nextTime, _ := time.Parse(layout, n.Time)
+
+		isSameTimeAndStop := currentTime == nextTime && c.StopID == stopID && n.StopID == stopID
+		if isSameTimeAndStop || includeCurrent {
+			availableTrains = append(availableTrains, trains[index])
+		}
+		// increase index and mark whether next should be cinluded in availableTrains
+		index++
+		includeCurrent = isSameTimeAndStop
 	}
 
-	return requested.Equal(scheduled), nil
+	if len(availableTrains) == 1 {
+		return []Schedule{}, nil
+	}
+
+	return availableTrains, nil
 }

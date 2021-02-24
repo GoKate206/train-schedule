@@ -65,7 +65,14 @@ func getScheduleByDate(givenDate time.Time) ([]Schedule, error) {
 	}
 
 	sort.Slice(schedules, func(i int, j int) bool {
-		return schedules[i].Time < schedules[j].Time
+		if schedules[i].Time < schedules[j].Time {
+			return true
+		}
+		if schedules[i].Time > schedules[j].Time {
+			return false
+		}
+
+		return schedules[i].StopID < schedules[j].StopID
 	})
 
 	return schedules, nil

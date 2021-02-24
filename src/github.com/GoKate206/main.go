@@ -3,5 +3,8 @@ package main
 import "fmt"
 
 func main() {
-	fmt.Println("Starting Program")
+	// If I had more time I would creat a server so users could
+	// interact with a UI to upload CSV Schedules
+	// and request train / stop schedules
+	fmt.Println("Hello Tomo!")
 }
