@@ -12,12 +12,18 @@ Train Schedule Program
   - If there are one or fewer trains arriving no times will be shown
 
 ### How to run this program
-  < Coming soon! >
+- Build the project and dependencies by running `go mod init src/github.com/GoKate206` ( Make sure that there is no leading slash at the end of `GoKate206`)
+- Navigate to `src/github.com/GoKate206`
+  - Run the tests `go test *.go -v`
+  - Run the program `go run main.go`
 
 ### Assumptions
-- < Coming soon >
+- Train schedules will only be returned if there are 2 or more trains coming at requested time
+- Return value is a slice of struct with schedule details
+- There is no given range from requested time ( ex: User wants to see a bus at 3:30 they will not see buses that come at 3:31 )
+- Time is in military for comparisons
 
 
 ### Technology Used
 - [Scribble](https://pkg.go.dev/github.com/nanobox-io/golang-scribble): Mock a database with JSON
-- [Testify](https://pkg.go.dev/github.com/stretchr/testify): Provide tools to test code
+- [Testify](https://pkg.go.dev/github.com/stretchr/testify): Provide tools for testing
