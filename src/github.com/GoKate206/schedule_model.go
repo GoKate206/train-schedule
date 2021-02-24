@@ -13,7 +13,6 @@ import (
 var (
 	layout          = "Jan 02 2006 15:04"
 	dateLayout      = "Jan 02 2006"
-	timeLayout      = "15:04"
 	expectedHeaders = []string{"stopID", "route", "trainID", "time"}
 )
 

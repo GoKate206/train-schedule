@@ -1,15 +1,7 @@
 package main
 
-import (
-	"fmt"
-	"log"
-)
+import "fmt"
 
 func main() {
-	initDb()
-	stops, err := getAllStops()
-	if err != nil {
-		log.Fatal(fmt.Sprintf("Error getting all stops: %v", err))
-	}
-	fmt.Println(stops)
+	fmt.Println("Starting Program")
 }

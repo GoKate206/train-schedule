@@ -59,7 +59,7 @@ func TestReadCsv(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 
-		t.Run("when trainID has less than 4 characters", func(t *testing.T) {
+		t.Run("when trainID is not 4 characters", func(t *testing.T) {
 			csv := `stopID,route,trainID,time
 1,"C","865","Jul 05 2021 13:14"`
 			_, err := readCsv(csv)
@@ -113,7 +113,8 @@ func TestInsertSchedules(t *testing.T) {
 			var schedules = []Schedule{}
 			for _, b := range all {
 				schedule := Schedule{}
-				json.Unmarshal(b, &schedule)
+				err := json.Unmarshal(b, &schedule)
+				require.NoError(t, err)
 				schedules = append(schedules, schedule)
 			}
 
@@ -177,7 +178,7 @@ func TestGetScheduleByStop(t *testing.T) {
 				assert.EqualValues(t, err.Error(), `parsing time "07/04/21 7:42" as "Jan 02 2006 15:04": cannot parse "07/04/21 7:42" as "Jan"`)
 			})
 
-			t.Run("when invoked with a valid time where ther are 2 trains arriving on that minute", func(t *testing.T) {
+			t.Run("when invoked with a valid time where there are 2 trains arriving on that minute", func(t *testing.T) {
 				schedules, err := getScheduleByStop(stopId, "Jul 04 2021 07:42")
 				require.Nil(t, err)
 

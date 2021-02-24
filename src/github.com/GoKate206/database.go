@@ -12,18 +12,18 @@ import (
 
 var (
 	db             *scribble.Driver
-	scheduleDbName = "./schedule"
+	scheduleDbName = "train-schedule"
 )
 
 func tearDownDb() {
-	if err := db.Delete(scheduleDbName, ""); err != nil {
+	if err := db.Delete(fmt.Sprintf("./%s", scheduleDbName), ""); err != nil {
 		log.Fatal(fmt.Sprintf("Error deleting from db: %v", err))
 	}
 }
 
 func initDb() {
 	var err error
-	db, err = scribble.New(scheduleDbName, nil)
+	db, err = scribble.New(fmt.Sprintf("./%s", scheduleDbName), nil)
 	if err != nil {
 		log.Fatal("Cannot create Schedule DB")
 		return
@@ -41,8 +41,10 @@ func getScheduleByDate(givenDate time.Time) ([]Schedule, error) {
 	schedules := []Schedule{}
 	day := givenDate.Format(dateLayout)
 
-	bytes, err := db.ReadAll(scheduleDbName)
-	if err != nil {
+	bytes, err := db.ReadAll(fmt.Sprintf("./%s", scheduleDbName))
+	// ReadAll will error if there are no rows,
+	// only error if there are rows
+	if len(bytes) > 0 && err != nil {
 		return schedules, err
 	}
 
@@ -71,8 +73,10 @@ func getScheduleByDate(givenDate time.Time) ([]Schedule, error) {
 
 func getAllStops() ([]int64, error) {
 	trainStops := []int64{}
-	bytes, err := db.ReadAll(scheduleDbName)
-	if err != nil {
+	bytes, err := db.ReadAll(fmt.Sprintf("./%s", scheduleDbName))
+	// ReadAll will error if there are no rows,
+	// only error if there are rows
+	if len(bytes) > 0 && err != nil {
 		return trainStops, err
 	}
 
