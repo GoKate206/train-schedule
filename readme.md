@@ -27,3 +27,7 @@ Train Schedule Program
 ### Technology Used
 - [Scribble](https://pkg.go.dev/github.com/nanobox-io/golang-scribble): Mock a database with JSON
 - [Testify](https://pkg.go.dev/github.com/stretchr/testify): Provide tools for testing
+
+
+#### Ideal Data Model
+[Lucid Chart](https://lucid.app/lucidchart/invitations/accept/7c07386f-ac7f-401e-a1d8-d35f7c4fa5a3)
